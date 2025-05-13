@@ -1,0 +1,53 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gemini Videobot</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin: 20px; }
+    video { width: 300px; border-radius: 10px; }
+    #response { margin-top: 20px; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h2>Talk to Gemini</h2>
+  <video id="video" autoplay muted></video>
+  <div>
+    <button onclick="startRecording()">Start Talking</button>
+    <p id="response">Response will appear here...</p>
+  </div>
+  <script>
+    let mediaRecorder, audioChunks = [];
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        document.getElementById("video").srcObject = stream;
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(audioChunks);
+          const text = prompt("You spoke. Type your message here:"); // Mock STT
+          const res = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text })
+          });
+          const data = await res.json();
+          document.getElementById("response").innerText = data.response;
+
+          const utterance = new SpeechSynthesisUtterance(data.response);
+          speechSynthesis.speak(utterance);
+          audioChunks = [];
+        };
+      });
+
+    function startRecording() {
+      audioChunks = [];
+      mediaRecorder.start();
+      setTimeout(() => mediaRecorder.stop(), 4000);
+    }
+  </script>
+</body>
+</html>
